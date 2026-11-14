@@ -32,22 +32,14 @@ import (
 // JenkinsReconciler reconciles a Jenkins object
 type JenkinsReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme           *runtime.Scheme
+	JenkinsResources jenkins_controller.JenkinsResourcesInterface
 }
 
 // +kubebuilder:rbac:groups=ci.tomciusromcius.github.io,resources=jenkins,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=ci.tomciusromcius.github.io,resources=jenkins/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=ci.tomciusromcius.github.io,resources=jenkins/finalizers,verbs=update
 
-// Reconcile is part of the main kubernetes reconciliation loop which aims to
-// move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the Jenkins object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
-//
-// For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.21.0/pkg/reconcile
 func (r *JenkinsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = logf.FromContext(ctx)
 	objectKey := types.NamespacedName{
@@ -56,6 +48,9 @@ func (r *JenkinsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 	jenkins, err := jenkins_controller.FetchJenkins(ctx, r.Client, objectKey)
 	if err != nil {
+		return ctrl.Result{}, err
+	}
+	if err := r.JenkinsResources.EnsureStatefulSet(ctx, jenkins); err != nil {
 		return ctrl.Result{}, err
 	}
 	return ctrl.Result{}, nil

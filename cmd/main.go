@@ -39,6 +39,7 @@ import (
 
 	civ1alpha1 "github.com/tomciusromcius/jenkins-operator/api/v1alpha1"
 	"github.com/tomciusromcius/jenkins-operator/internal/controller"
+	"github.com/tomciusromcius/jenkins-operator/internal/controller/jenkins_controller"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -203,8 +204,9 @@ func main() {
 	}
 
 	if err := (&controller.JenkinsReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:           mgr.GetClient(),
+		Scheme:           mgr.GetScheme(),
+		JenkinsResources: jenkins_controller.NewJenkinsControllerResourceCreator(mgr.GetClient()),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Jenkins")
 		os.Exit(1)
