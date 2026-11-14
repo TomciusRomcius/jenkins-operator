@@ -1,0 +1,4 @@
+## Append samples of your project ##
+resources:
+- ci_v1alpha1_jenkins.yaml
+# +kubebuilder:scaffold:manifestskustomizesamples
