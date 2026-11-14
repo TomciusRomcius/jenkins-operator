@@ -7,4 +7,5 @@ metadata:
   name: jenkins-sample
 spec:
   image: jenkins/jenkins:lts
-  replicas: 1
+  controllerexecutors: 1
+  agentreplicas: 1

@@ -39,18 +39,28 @@ spec:
           spec:
             description: JenkinsSpec defines the desired state of Jenkins.
             properties:
+              agents:
+                properties:
+                  agentexecutors:
+                    format: int32
+                    minimum: 1
+                    type: integer
+                  agentreplicas:
+                    format: int32
+                    minimum: 1
+                    type: integer
+                type: object
+              controllerexecutors:
+                format: int32
+                minimum: 0
+                type: integer
               image:
                 description: Image is the Jenkins controller container image, e.g.
                   "jenkins/jenkins:lts".
                 minLength: 1
                 type: string
-              replicas:
-                default: 1
-                description: Replicas is the number of Jenkins controller pods.
-                format: int32
-                minimum: 0
-                type: integer
             required:
+            - controllerexecutors
             - image
             type: object
           status:

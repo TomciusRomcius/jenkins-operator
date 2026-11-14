@@ -20,22 +20,22 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 // JenkinsSpec defines the desired state of Jenkins.
 type JenkinsSpec struct {
-	// Important: Run "make manifests generate" to regenerate code after modifying this file
-
 	// Image is the Jenkins controller container image, e.g. "jenkins/jenkins:lts".
 	// +kubebuilder:validation:MinLength=1
 	Image string `json:"image"`
-
-	// Replicas is the number of Jenkins controller pods.
-	// +kubebuilder:default=1
 	// +kubebuilder:validation:Minimum=0
+	ControllerExecutors int32 `json:"controllerexecutors"`
 	// +optional
-	Replicas *int32 `json:"replicas,omitempty"`
+	Agents *JenkinsAgentOpts `json:"agents,omitempty"`
+}
+
+type JenkinsAgentOpts struct {
+	// +kubebuilder:validation:Minimum=1
+	AgentReplicas int32 `json:"agentreplicas,omitempty"`
+	// +kubebuilder:validation:Minimum=1
+	AgentExecutors int32 `json:"agentexecutors,omitempty"`
 }
 
 // JenkinsStatus defines the observed state of Jenkins.
