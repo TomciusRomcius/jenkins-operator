@@ -20,11 +20,13 @@ import (
 	"context"
 
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	civ1alpha1 "github.com/tomciusromcius/jenkins-operator/api/v1alpha1"
+	"github.com/tomciusromcius/jenkins-operator/internal/controller/jenkins_controller"
 )
 
 // JenkinsReconciler reconciles a Jenkins object
@@ -48,9 +50,14 @@ type JenkinsReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.21.0/pkg/reconcile
 func (r *JenkinsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = logf.FromContext(ctx)
-
-	// TODO(user): your logic here
-
+	objectKey := types.NamespacedName{
+		Namespace: req.Namespace,
+		Name:      req.Name,
+	}
+	jenkins, err := jenkins_controller.FetchJenkins(ctx, r.Client, objectKey)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 	return ctrl.Result{}, nil
 }
 
