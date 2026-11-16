@@ -26,14 +26,14 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	civ1alpha1 "github.com/tomciusromcius/jenkins-operator/api/v1alpha1"
-	"github.com/tomciusromcius/jenkins-operator/internal/controller/jenkins_controller"
+	"github.com/tomciusromcius/jenkins-operator/internal/controller/jenkins"
 )
 
 // JenkinsReconciler reconciles a Jenkins object
 type JenkinsReconciler struct {
 	client.Client
 	Scheme           *runtime.Scheme
-	JenkinsResources jenkins_controller.JenkinsResourcesInterface
+	JenkinsResources jenkins.JenkinsResourcesInterface
 }
 
 // +kubebuilder:rbac:groups=ci.tomciusromcius.github.io,resources=jenkins,verbs=get;list;watch;create;update;patch;delete
@@ -46,7 +46,7 @@ func (r *JenkinsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		Namespace: req.Namespace,
 		Name:      req.Name,
 	}
-	jenkins, err := jenkins_controller.FetchJenkins(ctx, r.Client, objectKey)
+	jenkins, err := jenkins.FetchJenkins(ctx, r.Client, objectKey)
 	if err != nil {
 		return ctrl.Result{}, err
 	}

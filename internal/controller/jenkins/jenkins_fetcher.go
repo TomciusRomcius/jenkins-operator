@@ -1,4 +1,4 @@
-package jenkins_controller
+package jenkins
 
 import (
 	"context"
