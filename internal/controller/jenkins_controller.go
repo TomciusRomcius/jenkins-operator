@@ -53,6 +53,12 @@ func (r *JenkinsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	if err := r.JenkinsResources.EnsureStatefulSet(ctx, jenkins); err != nil {
 		return ctrl.Result{}, err
 	}
+	if err := r.JenkinsResources.EnsurePvc(ctx, jenkins); err != nil {
+		return ctrl.Result{}, err
+	}
+	if err := r.JenkinsResources.EnsureNodeport(ctx, jenkins); err != nil {
+		return ctrl.Result{}, err
+	}
 	return ctrl.Result{}, nil
 }
 
