@@ -55,6 +55,11 @@ func (r *JenkinsResources) EnsureStatefulSet(ctx context.Context, jenkins *civ1a
 		statefulSet.Spec.Template.Spec.Containers = []apiv1.Container{{
 			Name:  "jenkins",
 			Image: jenkins.Spec.Image,
+			Command: []string{"/usr/bin/tini", "--",
+				"bash", "-c",
+				`set -e
+				jenkins-plugin-cli --plugins configuration-as-code
+				/usr/local/bin/jenkins.sh`}, // Better to move into a prebuilt image but idk
 		}}
 		statefulSet.Spec.Template.Spec.Volumes = []apiv1.Volume{
 			{

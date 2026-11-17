@@ -28,6 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	civ1alpha1 "github.com/tomciusromcius/jenkins-operator/api/v1alpha1"
+	"github.com/tomciusromcius/jenkins-operator/internal/controller/jenkins"
 )
 
 var _ = Describe("Jenkins Controller", func() {
@@ -40,18 +41,20 @@ var _ = Describe("Jenkins Controller", func() {
 			Name:      resourceName,
 			Namespace: "default", // TODO(user):Modify as needed
 		}
-		jenkins := &civ1alpha1.Jenkins{}
+		jenkinsCR := &civ1alpha1.Jenkins{}
 
 		BeforeEach(func() {
 			By("creating the custom resource for the Kind Jenkins")
-			err := k8sClient.Get(ctx, typeNamespacedName, jenkins)
+			err := k8sClient.Get(ctx, typeNamespacedName, jenkinsCR)
 			if err != nil && errors.IsNotFound(err) {
 				resource := &civ1alpha1.Jenkins{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
 						Namespace: "default",
 					},
-					// TODO(user): Specify other spec details if needed.
+					Spec: civ1alpha1.JenkinsSpec{
+						Image: "jenkins/jenkins:lts",
+					},
 				}
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 			}
@@ -69,8 +72,9 @@ var _ = Describe("Jenkins Controller", func() {
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
 			controllerReconciler := &JenkinsReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:           k8sClient,
+				Scheme:           k8sClient.Scheme(),
+				JenkinsResources: jenkins.NewJenkinsControllerResourceCreator(k8sClient),
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
