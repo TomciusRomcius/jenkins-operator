@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -39,6 +40,7 @@ type JenkinsReconciler struct {
 // +kubebuilder:rbac:groups=ci.tomciusromcius.github.io,resources=jenkins,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=ci.tomciusromcius.github.io,resources=jenkins/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=ci.tomciusromcius.github.io,resources=jenkins/finalizers,verbs=update
+// +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;patch;delete
 
 func (r *JenkinsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = logf.FromContext(ctx)
@@ -48,6 +50,10 @@ func (r *JenkinsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 	jenkins, err := jenkins.FetchJenkins(ctx, r.Client, objectKey)
 	if err != nil {
+		return ctrl.Result{}, err
+	}
+	// The ConfigMap goes first: the StatefulSet's pod mounts it and can't start without it.
+	if err := r.JenkinsResources.EnsureCascConfigMap(ctx, jenkins); err != nil {
 		return ctrl.Result{}, err
 	}
 	if err := r.JenkinsResources.EnsureStatefulSet(ctx, jenkins); err != nil {
@@ -66,6 +72,7 @@ func (r *JenkinsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 func (r *JenkinsReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&civ1alpha1.Jenkins{}).
+		Owns(&corev1.ConfigMap{}).
 		Named("jenkins").
 		Complete(r)
 }

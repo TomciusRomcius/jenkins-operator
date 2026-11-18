@@ -91,10 +91,76 @@ var _ = Describe("JenkinsResources", func() {
 			Expect(c.List(ctx, pvcs, client.InNamespace(testNamespace))).To(Succeed())
 			Expect(pvcs.Items).To(HaveLen(1))
 
-			volumes := getStatefulSet().Spec.Template.Spec.Volumes
-			Expect(volumes).To(HaveLen(1))
-			Expect(volumes[0].PersistentVolumeClaim).NotTo(BeNil())
-			Expect(volumes[0].PersistentVolumeClaim.ClaimName).To(Equal(pvcs.Items[0].Name))
+			var pvcVolume *apiv1.PersistentVolumeClaimVolumeSource
+			for _, v := range getStatefulSet().Spec.Template.Spec.Volumes {
+				if v.PersistentVolumeClaim != nil {
+					Expect(pvcVolume).To(BeNil(), "expected exactly one PVC volume")
+					pvcVolume = v.PersistentVolumeClaim
+				}
+			}
+			Expect(pvcVolume).NotTo(BeNil())
+			Expect(pvcVolume.ClaimName).To(Equal(pvcs.Items[0].Name))
+		})
+
+		It("mounts the JCasC config created by EnsureCascConfigMap", func() {
+			Expect(r.EnsureStatefulSet(ctx, jenkins)).To(Succeed())
+			Expect(r.EnsureCascConfigMap(ctx, jenkins)).To(Succeed())
+
+			cms := &apiv1.ConfigMapList{}
+			Expect(c.List(ctx, cms, client.InNamespace(testNamespace))).To(Succeed())
+			Expect(cms.Items).To(HaveLen(1))
+			cm := cms.Items[0]
+
+			podSpec := getStatefulSet().Spec.Template.Spec
+			var cascVolume *apiv1.Volume
+			for i, v := range podSpec.Volumes {
+				if v.ConfigMap != nil && v.ConfigMap.Name == cm.Name {
+					cascVolume = &podSpec.Volumes[i]
+				}
+			}
+			Expect(cascVolume).NotTo(BeNil(), "the configmap must be mounted as a volume")
+
+			container := podSpec.Containers[0]
+			var mountPath string
+			for _, m := range container.VolumeMounts {
+				if m.Name == cascVolume.Name {
+					mountPath = m.MountPath
+					Expect(m.ReadOnly).To(BeTrue())
+				}
+			}
+			Expect(mountPath).NotTo(BeEmpty(), "the configmap volume must be mounted into the jenkins container")
+
+			Expect(container.Env).To(ContainElement(HaveField("Name", "CASC_JENKINS_CONFIG")))
+			for _, e := range container.Env {
+				if e.Name == "CASC_JENKINS_CONFIG" {
+					Expect(e.Value).To(HavePrefix(mountPath+"/"), "CASC_JENKINS_CONFIG must point inside the mounted volume")
+					Expect(cm.Data).To(HaveKey(e.Value[len(mountPath)+1:]), "CASC_JENKINS_CONFIG must name a key in the configmap")
+				}
+			}
+		})
+
+		It("restarts the pod when the JCasC config changes", func() {
+			Expect(r.EnsureStatefulSet(ctx, jenkins)).To(Succeed())
+			before := getStatefulSet().Spec.Template.Annotations[cascHashAnnotation]
+			Expect(before).NotTo(BeEmpty())
+
+			jenkins.Spec.ControllerExecutors = 4
+			Expect(r.EnsureStatefulSet(ctx, jenkins)).To(Succeed())
+
+			Expect(getStatefulSet().Spec.Template.Annotations[cascHashAnnotation]).NotTo(Equal(before),
+				"a changed pod template annotation is what makes the StatefulSet roll the pod")
+		})
+
+		It("keeps pod template annotations it does not own", func() {
+			Expect(r.EnsureStatefulSet(ctx, jenkins)).To(Succeed())
+			sts := getStatefulSet()
+			sts.Spec.Template.Annotations["kubectl.kubernetes.io/restartedAt"] = "2026-11-18T10:00:00Z"
+			Expect(c.Update(ctx, sts)).To(Succeed())
+
+			Expect(r.EnsureStatefulSet(ctx, jenkins)).To(Succeed())
+
+			Expect(getStatefulSet().Spec.Template.Annotations).To(
+				HaveKeyWithValue("kubectl.kubernetes.io/restartedAt", "2026-11-18T10:00:00Z"))
 		})
 
 		It("updates the image when the spec changes", func() {
@@ -119,6 +185,52 @@ var _ = Describe("JenkinsResources", func() {
 			r = NewJenkinsControllerResourceCreator(newFakeClient(failCreate))
 
 			Expect(r.EnsureStatefulSet(ctx, jenkins)).To(MatchError(errInjected))
+		})
+	})
+
+	Describe("EnsureCascConfigMap", func() {
+		getConfigMap := func() *apiv1.ConfigMap {
+			GinkgoHelper()
+			cm := &apiv1.ConfigMap{}
+			Expect(c.Get(ctx, key("my-jenkins-casc"), cm)).To(Succeed())
+			return cm
+		}
+
+		It("creates the configmap from the spec", func() {
+			jenkins.Spec.ControllerExecutors = 2
+			Expect(r.EnsureCascConfigMap(ctx, jenkins)).To(Succeed())
+
+			cm := getConfigMap()
+			Expect(cm.Data).To(HaveKeyWithValue("jenkins.yaml", MatchYAML(`
+jenkins:
+  numExecutors: 2
+`)))
+
+			expectControlledByJenkins(cm, jenkins)
+		})
+
+		It("updates the config when the spec changes", func() {
+			Expect(r.EnsureCascConfigMap(ctx, jenkins)).To(Succeed())
+
+			jenkins.Spec.ControllerExecutors = 3
+			Expect(r.EnsureCascConfigMap(ctx, jenkins)).To(Succeed())
+
+			Expect(getConfigMap().Data["jenkins.yaml"]).To(MatchYAML("jenkins:\n  numExecutors: 3\n"))
+		})
+
+		It("is idempotent", func() {
+			Expect(r.EnsureCascConfigMap(ctx, jenkins)).To(Succeed())
+			before := getConfigMap().ResourceVersion
+
+			Expect(r.EnsureCascConfigMap(ctx, jenkins)).To(Succeed())
+
+			Expect(getConfigMap().ResourceVersion).To(Equal(before), "second call should not update")
+		})
+
+		It("returns API errors", func() {
+			r = NewJenkinsControllerResourceCreator(newFakeClient(failCreate))
+
+			Expect(r.EnsureCascConfigMap(ctx, jenkins)).To(MatchError(errInjected))
 		})
 	})
 
