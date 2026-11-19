@@ -24,7 +24,8 @@ import (
 type JenkinsSpec struct {
 	// Image is the Jenkins controller container image, e.g. "jenkins/jenkins:lts".
 	// +kubebuilder:validation:MinLength=1
-	Image string `json:"image"`
+	Image      string `json:"image"`
+	UserSecret string `json:"usersecret"`
 	// +kubebuilder:validation:Minimum=0
 	ControllerExecutors int32 `json:"controllerexecutors"`
 	// +optional

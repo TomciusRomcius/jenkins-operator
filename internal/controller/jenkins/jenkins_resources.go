@@ -85,6 +85,11 @@ func (r *JenkinsResources) EnsureStatefulSet(ctx context.Context, jenkins *civ1a
 			Env: []apiv1.EnvVar{
 				{Name: "CASC_JENKINS_CONFIG", Value: cascMountPath + "/" + cascFileName},
 			},
+			EnvFrom: []apiv1.EnvFromSource{
+				{SecretRef: &apiv1.SecretEnvSource{
+					LocalObjectReference: apiv1.LocalObjectReference{Name: jenkins.Spec.UserSecret},
+				}},
+			},
 			VolumeMounts: []apiv1.VolumeMount{
 				{Name: cascVolumeName, MountPath: cascMountPath, ReadOnly: true},
 			},
@@ -148,6 +153,22 @@ func cascConfig(jenkins *civ1alpha1.Jenkins) (string, error) {
 	config := map[string]any{
 		"jenkins": map[string]any{
 			"numExecutors": jenkins.Spec.ControllerExecutors,
+			"securityRealm": map[string]any{
+				"local": map[string]any{
+					"allowsSignup": false,
+					"users": []map[string]any{
+						{
+							"id":       "${JENKINS_ADMIN_ID}",
+							"password": "${JENKINS_ADMIN_PASSWORD}",
+						},
+					},
+				},
+			},
+			"authorizationStrategy": map[string]any{
+				"loggedInUsersCanDoAnything": map[string]any{
+					"allowAnonymousRead": false,
+				},
+			},
 		},
 	}
 	out, err := yaml.Marshal(config)

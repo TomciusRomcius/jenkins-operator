@@ -7,5 +7,5 @@ metadata:
   name: jenkins-sample
 spec:
   image: jenkins/jenkins:lts
+  usersecret: jenkins-sample-admin
   controllerexecutors: 1
-  agentreplicas: 1

@@ -1,4 +1,5 @@
 ## Append samples of your project ##
 resources:
+- jenkins_admin_secret.yaml
 - ci_v1alpha1_jenkins.yaml
 # +kubebuilder:scaffold:manifestskustomizesamples
