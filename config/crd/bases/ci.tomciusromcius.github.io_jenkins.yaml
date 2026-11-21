@@ -41,11 +41,11 @@ spec:
             properties:
               agents:
                 properties:
-                  agentexecutors:
+                  executors:
                     format: int32
                     minimum: 1
                     type: integer
-                  agentreplicas:
+                  replicas:
                     format: int32
                     minimum: 1
                     type: integer

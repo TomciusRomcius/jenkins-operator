@@ -34,9 +34,9 @@ type JenkinsSpec struct {
 
 type JenkinsAgentOpts struct {
 	// +kubebuilder:validation:Minimum=1
-	AgentReplicas int32 `json:"agentreplicas,omitempty"`
+	Replicas int32 `json:"replicas,omitempty"`
 	// +kubebuilder:validation:Minimum=1
-	AgentExecutors int32 `json:"agentexecutors,omitempty"`
+	Executors int32 `json:"executors,omitempty"`
 }
 
 // JenkinsStatus defines the observed state of Jenkins.
